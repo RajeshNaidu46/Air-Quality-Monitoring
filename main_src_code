@@ -1,0 +1,155 @@
+#define BLYNK_TEMPLATE_ID "TMPL3K35XuTf6"
+#define BLYNK_TEMPLATE_NAME "Air Quality Monitoring"
+#define BLYNK_AUTH_TOKEN "rvGdNeB6B7r2a7r1gnOLu5WlE-KPJzPm"
+
+#define BLYNK_PRINT Serial
+
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+#include <DHT.h>
+#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
+
+// --- LCD setup ---
+LiquidCrystal_I2C lcd(0x27, 16, 2);  // Address found by I2C scan: 0x27
+
+// --- Custom degree symbol ---
+byte degree_symbol[8] = {
+  0b00111,
+  0b00101,
+  0b00111,
+  0b00000,
+  0b00000,
+  0b00000,
+  0b00000,
+  0b00000
+};
+
+// --- WiFi and Blynk credentials ---
+char auth[] = BLYNK_AUTH_TOKEN;
+char ssid[] = "Cursed Wi-Fi";  // your Wi-Fi name
+char pass[] = "12345678";      // your Wi-Fi password
+
+// --- Sensor setup ---
+#define DHTPIN 4         // DHT11 data pin connected to GPIO 2 (D2)
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+int gas = 32;                 // MQ135 connected to GPIO 32
+int sensorThreshold = 1200;
+
+BlynkTimer timer;
+
+// --- Function to send sensor data to Blynk ---
+void sendSensor() {
+  float h = dht.readHumidity();
+  float t = dht.readTemperature(); // °C
+  int gasValue = analogRead(gas);
+
+  if (isnan(h) || isnan(t)) {
+    Serial.println("❌ Failed to read from DHT sensor!");
+    return;
+  }
+
+  // Send to Blynk
+  Blynk.virtualWrite(V0, t);
+  Blynk.virtualWrite(V1, h);
+  Blynk.virtualWrite(V2, gasValue);
+
+  // Print to Serial
+  Serial.print("🌡 Temp: "); Serial.print(t);
+  Serial.print(" °C | 💧 Humidity: "); Serial.print(h);
+  Serial.print(" % | 🧪 Gas Value: "); Serial.println(gasValue);
+
+  // Pollution alert event
+  if (gasValue > sensorThreshold) {
+    Blynk.logEvent("pollution_alert", "⚠️ Bad Air Detected!");
+  }
+}
+
+// --- Function to update LCD Display ---
+void updateLCD() {
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  int gasValue = analogRead(gas);
+
+  if (isnan(h) || isnan(t)) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Sensor Error!");
+    delay(2000);
+    return;
+  }
+
+  // --- Temperature ---
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Temp:");
+  lcd.setCursor(6, 0);
+  lcd.print(t, 1);
+  lcd.write(1);
+  lcd.print("C");
+
+  // --- Humidity ---
+  lcd.setCursor(0, 1);
+  lcd.print("Hum:");
+  lcd.setCursor(5, 1);
+  lcd.print(h, 1);
+  lcd.print("%");
+
+  delay(2500);
+
+  // --- Gas Value ---
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Gas Value:");
+  lcd.setCursor(0, 1);
+  lcd.print(gasValue);
+  delay(2500);
+
+  // --- Air Quality Status ---
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  if (gasValue < sensorThreshold) {
+    lcd.print("Status: Fresh Air");
+    Serial.println("✅ Fresh Air");
+  } else {
+    lcd.print("Status: Bad Air");
+    Serial.println("⚠️ Bad Air");
+  }
+  delay(2500);
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(100);
+
+  // Initialize I2C and LCD
+  Wire.begin(21, 22);  // SDA=21, SCL=22
+  lcd.init();
+  delay(100);
+  lcd.createChar(1, degree_symbol);
+  lcd.backlight();
+
+  // Welcome screen
+  lcd.clear();
+  lcd.setCursor(2, 0);
+  lcd.print("Air Quality");
+  lcd.setCursor(3, 1);
+  lcd.print("Monitoring");
+  delay(2000);
+  lcd.clear();
+
+  // Initialize sensors and Wi-Fi
+  dht.begin();
+  Blynk.begin(auth, ssid, pass);
+
+  // Schedule functions
+  timer.setInterval(30000L, sendSensor);  // send to Blynk every 30s
+  timer.setInterval(8000L, updateLCD);    // update LCD every 8s
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
+}
