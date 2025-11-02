@@ -1,0 +1,23 @@
+| Component | ESP32 Pin            | Description                           |
+| --------- | -------------------- | ------------------------------------- |
+| **Vin**   | → Breadboard +V rail | Powers all external sensors (5V line) |
+| **GND**   | → Breadboard – rail  | Common ground for all components      |
+---------------------------------------------------------------------------------------------------------
+| DHT11 Pin | Connection           |
+| --------- | -------------------- |
+| **VCC**   | → Breadboard +V rail |
+| **GND**   | → Breadboard – rail  |
+| **DATA**  | → **D4** on ESP32    |
+------------------------------------------------------------------------------------------------------------
+| MQ135 Pin | Connection           |
+| --------- | -------------------- |
+| **VCC**   | → Breadboard +V rail |
+| **GND**   | → Breadboard – rail  |
+| **AOUT**  | → **D32** on ESP32   |
+-----------------------------------------------------------------------------------------------------------
+| LCD Pin | Connection           |
+| ------- | -------------------- |
+| **VCC** | → Breadboard +V rail |
+| **GND** | → Breadboard – rail  |
+| **SDA** | → **D21** on ESP32   |
+| **SCL** | → **D22** on ESP32   |
